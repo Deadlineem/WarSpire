@@ -15,9 +15,9 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/// \addtogroup Trinityd
-/// @{
-/// \file
+ /// \addtogroup Trinityd
+ /// @{
+ /// \file
 
 #include "CliRunnable.h"
 #include "Config.h"
@@ -46,7 +46,7 @@ namespace Trinity::Impl::Readline
     static std::vector<std::string> vec;
     char* cli_unpack_vector(char const*, int state)
     {
-        static size_t i=0;
+        static size_t i = 0;
         if (!state)
             i = 0;
         if (i < vec.size())
@@ -58,7 +58,7 @@ namespace Trinity::Impl::Readline
     char** cli_completion(char const* text, int /*start*/, int /*end*/)
     {
         ::rl_attempted_completion_over = 1;
-        vec = Trinity::ChatCommands::GetAutoCompletionsFor(CliHandler(nullptr,nullptr), text);
+        vec = Trinity::ChatCommands::GetAutoCompletionsFor(CliHandler(nullptr, nullptr), text);
         return ::rl_completion_matches(text, &cli_unpack_vector);
     }
 
@@ -76,10 +76,10 @@ void utf8print(void* /*arg*/, std::string_view str)
 #if TRINITY_PLATFORM == TRINITY_PLATFORM_WINDOWS
     WriteWinConsole(str);
 #else
-{
-    printf(STRING_VIEW_FMT, STRING_VIEW_FMT_ARG(str));
-    fflush(stdout);
-}
+    {
+        printf(STRING_VIEW_FMT, STRING_VIEW_FMT_ARG(str));
+        fflush(stdout);
+    }
 #endif
 }
 
@@ -99,7 +99,7 @@ int kb_hit_return()
     tv.tv_usec = 0;
     FD_ZERO(&fds);
     FD_SET(STDIN_FILENO, &fds);
-    select(STDIN_FILENO+1, &fds, nullptr, nullptr, &tv);
+    select(STDIN_FILENO + 1, &fds, nullptr, nullptr, &tv);
     return FD_ISSET(STDIN_FILENO, &fds);
 }
 #endif

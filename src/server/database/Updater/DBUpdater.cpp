@@ -28,6 +28,34 @@
 #include <boost/filesystem/operations.hpp>
 #include <fstream>
 #include <iostream>
+#ifdef _WIN32
+#include <windows.h>
+#include <urlmon.h>
+#pragma comment(lib, "urlmon.lib")
+bool DownloadFile(const std::string& url, const std::string& dest) {
+    return SUCCEEDED(URLDownloadToFileA(nullptr, url.c_str(), dest.c_str(), 0, nullptr));
+}
+#else
+#include <fstream>
+#include <curl/curl.h> // optional; could replace with Boost.Asio
+bool DownloadFile(const std::string& url, const std::string& dest) {
+    CURL* curl = curl_easy_init();
+    if (!curl) return false;
+
+    FILE* fp = fopen(dest.c_str(), "wb");
+    if (!fp) { curl_easy_cleanup(curl); return false; }
+
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, nullptr);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+
+    CURLcode res = curl_easy_perform(curl);
+    fclose(fp);
+    curl_easy_cleanup(curl);
+    return res == CURLE_OK;
+}
+#endif
 
 std::string DBUpdaterUtil::GetCorrectedMySQLExecutable()
 {
@@ -192,20 +220,12 @@ BaseLocation DBUpdater<T>::GetBaseLocationType()
 template<class T>
 bool DBUpdater<T>::Create(DatabaseWorkerPool<T>& pool)
 {
-    TC_LOG_INFO("sql.updates", "Database \"{}\" does not exist, do you want to create it? [yes (default) / no]: ",
+    TC_LOG_INFO("sql.updates", "Database \"{}\" does not exist, automatically creating it...",
         pool.GetConnectionInfo()->database);
-
-    std::string answer;
-    std::getline(std::cin, answer);
-    if (!answer.empty() && !(answer.substr(0, 1) == "y"))
-        return false;
-
-    TC_LOG_INFO("sql.updates", "Creating database \"{}\"...", pool.GetConnectionInfo()->database);
 
     // Path of temp file
     static Path const temp("create_table.sql");
 
-    // Create temporary query to use external MySQL CLi
     std::ofstream file(temp.generic_string());
     if (!file.is_open())
     {
@@ -213,8 +233,8 @@ bool DBUpdater<T>::Create(DatabaseWorkerPool<T>& pool)
         return false;
     }
 
-    file << "CREATE DATABASE `" << pool.GetConnectionInfo()->database << "` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci\n\n";
-
+    file << "CREATE DATABASE `" << pool.GetConnectionInfo()->database
+        << "` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci\n\n";
     file.close();
 
     try
@@ -234,6 +254,7 @@ bool DBUpdater<T>::Create(DatabaseWorkerPool<T>& pool)
     return true;
 }
 
+
 template<class T>
 bool DBUpdater<T>::Update(DatabaseWorkerPool<T>& pool)
 {
@@ -252,7 +273,7 @@ bool DBUpdater<T>::Update(DatabaseWorkerPool<T>& pool)
 
     UpdateFetcher updateFetcher(sourceDirectory, [&](std::string const& query) { DBUpdater<T>::Apply(pool, query); },
         [&](Path const& file) { DBUpdater<T>::ApplyFile(pool, file); },
-            [&](std::string const& query) -> QueryResult { return DBUpdater<T>::Retrieve(pool, query); });
+        [&](std::string const& query) -> QueryResult { return DBUpdater<T>::Retrieve(pool, query); });
 
     UpdateResult result;
     try
@@ -282,16 +303,21 @@ bool DBUpdater<T>::Update(DatabaseWorkerPool<T>& pool)
 template<class T>
 bool DBUpdater<T>::Populate(DatabaseWorkerPool<T>& pool)
 {
+    if (!DBUpdaterUtil::CheckExecutable())
+        return false;
+
+    const std::string dbName = DBUpdater<T>::GetTableName();
+
+    // Only force download/apply for World and Hotfixes
+    if (dbName != "World" && dbName != "Hotfixes")
     {
+        // Original behavior: only populate if empty
         QueryResult const result = Retrieve(pool, "SHOW TABLES");
         if (result && (result->GetRowCount() > 0))
             return true;
     }
 
-    if (!DBUpdaterUtil::CheckExecutable())
-        return false;
-
-    TC_LOG_INFO("sql.updates", "Database {} is empty, auto populating it...", DBUpdater<T>::GetTableName());
+    TC_LOG_INFO("sql.updates", "Updating the {} database to latest...", dbName);
 
     std::string const p = DBUpdater<T>::GetBaseFile();
     if (p.empty())
@@ -300,44 +326,85 @@ bool DBUpdater<T>::Populate(DatabaseWorkerPool<T>& pool)
         return true;
     }
 
-    Path const base(p);
-    if (!exists(base))
-    {
-        switch (DBUpdater<T>::GetBaseLocationType())
-        {
-            case LOCATION_REPOSITORY:
-            {
-                TC_LOG_ERROR("sql.updates", ">> Base file \"{}\" is missing. Try fixing it by cloning the source again.",
-                    base.generic_string());
+    Path base(p);
 
-                break;
-            }
-            case LOCATION_DOWNLOAD:
+    // For World and Hotfixes, always download latest file
+    std::string downloadUrl;
+    if (dbName == "World")
+        downloadUrl = "https://warspire.fpr.net/download/sql/TDB_full_world_1125.25101_2025_10_29.sql";
+    else if (dbName == "Hotfixes")
+        downloadUrl = "https://warspire.fpr.net/download/sql/TDB_full_hotfixes_1125.25101_2025_10_29.sql";
+
+    if (!downloadUrl.empty())
+    {
+        // Check AllowAutoDBUpdate in configuration
+        bool autoUpdate = sConfigMgr->GetBoolDefault("AllowAutoDBUpdate", false);
+
+        std::string userInput;
+        if (autoUpdate)
+        {
+            TC_LOG_INFO("sql.updates", "AllowAutoDBUpdate=1, automatically proceeding with database update.");
+            userInput = "y";
+        }
+        else
+        {
+            std::cout << "Do you want to download and apply the latest " << dbName
+                << " database update? [y/N]: ";
+            std::getline(std::cin, userInput);
+        }
+
+        if (userInput == "y" || userInput == "Y")
+        {
+            TC_LOG_INFO("sql.updates", "Downloading latest base SQL from {} ...", downloadUrl);
+            if (!DownloadFile(downloadUrl, base.generic_string()))
             {
-                std::string const filename = base.filename().generic_string();
-                std::string const workdir = boost::filesystem::current_path().generic_string();
-                TC_LOG_ERROR("sql.updates", ">> File \"{}\" is missing, download it from \"https://github.com/TrinityCore/TrinityCore/releases\"" \
-                    " uncompress it and place the file \"{}\" in the directory \"{}\".", filename, filename, workdir);
-                break;
+                TC_LOG_FATAL("sql.updates", "Failed to download {}. Manual download required!", downloadUrl);
+                return false;
+            }
+            TC_LOG_INFO("sql.updates", "Successfully downloaded {}", base.generic_string());
+        }
+        else
+        {
+            // Ask if user wants to use an existing local file
+            std::cout << "Do you want to use an existing local SQL file instead? [y/N]: ";
+            std::getline(std::cin, userInput);
+            if (userInput == "y" || userInput == "Y")
+            {
+                std::string localFile;
+                std::cout << "Enter full path to local SQL file: ";
+                std::getline(std::cin, localFile);
+
+                if (localFile.empty())
+                {
+                    TC_LOG_INFO("sql.updates", "No local file provided, skipping database update.");
+                }
+
+                base = Path(localFile);
+                TC_LOG_INFO("sql.updates", "Using existing local file '{}'", base.generic_string());
+            }
+            else
+            {
+                TC_LOG_INFO("sql.updates", "Update canceled by user.");
+
             }
         }
-        return false;
     }
 
-    // Update database
-    TC_LOG_INFO("sql.updates", ">> Applying \'{}\'...", base.generic_string());
+    // Apply base SQL
+    TC_LOG_INFO("sql.updates", ">> Applying '{}'...", base.generic_string());
     try
     {
         ApplyFile(pool, base);
     }
     catch (UpdateException&)
     {
-        return false;
+
     }
 
-    TC_LOG_INFO("sql.updates", ">> Done!");
+    TC_LOG_INFO("sql.updates", ">> {} Database update completed!", dbName);
     return true;
 }
+
 
 template<class T>
 QueryResult DBUpdater<T>::Retrieve(DatabaseWorkerPool<T>& pool, std::string const& query)
@@ -432,18 +499,60 @@ void DBUpdater<T>::ApplyFile(DatabaseWorkerPool<T>& pool, std::string const& hos
 
     // Invokes a mysql process which doesn't leak credentials to logs
     int32 const ret = Trinity::StartProcess(DBUpdaterUtil::GetCorrectedMySQLExecutable(), std::move(args),
-                                 "sql.updates", "", true);
+        "sql.updates", "", true);
 
     if (ret != EXIT_SUCCESS)
     {
-        TC_LOG_FATAL("sql.updates", "Applying of file \'{}\' to database \'{}\' failed!" \
-            " If you are a user, please pull the latest revision from the repository. "
-            "Also make sure you have not applied any of the databases with your sql client. "
-            "You cannot use auto-update system and import sql files from TrinityCore repository with your sql client. "
-            "If you are a developer, please fix your sql query.",
-            path.generic_string(), pool.GetConnectionInfo()->database);
+        bool defaultExists = is_regular_file(path);
+        std::string dbName = pool.GetConnectionInfo()->database;
 
-        throw UpdateException("update failed");
+        if (!defaultExists)
+        {
+            TC_LOG_ERROR("sql.updates",
+                "Database update aborted or failed for '{}'.\n"
+                "You declined to download or provide a custom SQL file, and no default TDB SQL file was found at '{}'.\n"
+                "Please manually place a valid SQL file in the correct location, enable AutoDBUpdate, or re-run the configuration.",
+                dbName, path.generic_string());
+        }
+        else
+        {
+            TC_LOG_WARN("sql.updates",
+                "Database update for '{}' was skipped or failed.\n"
+                "You declined both online and custom local SQL updates, but a default local file was found:\n"
+                "    {}\n"
+                "Would you like to use this default SQL file for database setup?",
+                dbName, path.generic_string());
+
+            std::string response;
+            std::cout << "Use default TrinityCore SQL (TDB) files? [y/N]: ";
+            std::getline(std::cin, response);
+
+            if (response == "y" || response == "Y")
+            {
+                TC_LOG_INFO("sql.updates", "Applying default local SQL file '{}'...", path.generic_string());
+                try
+                {
+                    ApplyFile(pool, path);
+                }
+                catch (UpdateException&)
+                {
+                    TC_LOG_FATAL("sql.updates",
+                        "Default SQL file '{}' could not be applied. "
+                        "Please verify the file is valid or re-run the configuration.",
+                        path.generic_string());
+                    throw;
+                }
+                return; // Successfully applied fallback
+            }
+            else
+            {
+                TC_LOG_INFO("sql.updates",
+                    "User declined to apply default local SQL file. Database '{}' remains unchanged.",
+                    dbName);
+            }
+        }
+
+        throw UpdateException("Database update canceled or failed");
     }
 }
 

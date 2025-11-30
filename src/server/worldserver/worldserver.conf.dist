@@ -41,6 +41,7 @@
 #    METRIC SETTINGS
 #    PVP SETTINGS
 #    LOAD SETTINGS
+#    ALLOW AUTO DATABASE UPDATES
 #
 ###################################################################################################
 
@@ -4355,6 +4356,22 @@ Pvp.FactionBalance.Pct20 = 0.8
 #                     1 - (Enabled)
 
 Load.Locales = 1
+
+#
+###################################################################################################
+
+###################################################################################################
+# AUTO UPDATE DATABASES
+#
+# Allows auto update of the databases from the web on worldserver start without prompting.
+#
+#    AllowAutoDBUpdate
+#        Description: Toggles the auto downloading/updating of the World and Hotfixes databases.  This
+#        requires an internet connection and DOES NOT update the Auth or Character database.
+#        Default:     0 - (Disabled - Auto Update from WarSpire)
+#                     1 - (Enabled - Show Prompt)
+
+AllowAutoDBUpdate = 0
 
 #
 ###################################################################################################

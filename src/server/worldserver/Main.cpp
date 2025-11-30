@@ -67,11 +67,11 @@ using namespace boost::program_options;
 namespace fs = boost::filesystem;
 
 #ifndef _TRINITY_CORE_CONFIG
-    #define _TRINITY_CORE_CONFIG  "worldserver.conf"
+#define _TRINITY_CORE_CONFIG  "worldserver.conf"
 #endif
 
 #ifndef _TRINITY_CORE_CONFIG_DIR
-    #define _TRINITY_CORE_CONFIG_DIR "worldserver.conf.d"
+#define _TRINITY_CORE_CONFIG_DIR "worldserver.conf.d"
 #endif
 
 #if TRINITY_PLATFORM == TRINITY_PLATFORM_WINDOWS
@@ -96,15 +96,16 @@ class FreezeDetector
 {
 public:
     FreezeDetector(Trinity::Asio::IoContext& ioContext, uint32 maxCoreStuckTime)
-        : _timer(ioContext), _worldLoopCounter(0), _lastChangeMsTime(getMSTime()), _maxCoreStuckTimeInMs(maxCoreStuckTime) { }
+        : _timer(ioContext), _worldLoopCounter(0), _lastChangeMsTime(getMSTime()), _maxCoreStuckTimeInMs(maxCoreStuckTime) {
+    }
 
     static void Start(std::shared_ptr<FreezeDetector> const& freezeDetector)
     {
         freezeDetector->_timer.expires_after(5s);
         freezeDetector->_timer.async_wait([freezeDetectorRef = std::weak_ptr(freezeDetector)](boost::system::error_code const& error) mutable
-        {
-            Handler(std::move(freezeDetectorRef), error);
-        });
+            {
+                Handler(std::move(freezeDetectorRef), error);
+            });
     }
 
     static void Handler(std::weak_ptr<FreezeDetector> freezeDetectorRef, boost::system::error_code const& error);
@@ -136,7 +137,7 @@ int main(int argc, char** argv)
     Trinity::Locale::Init();
 
     auto configFile = fs::absolute(_TRINITY_CORE_CONFIG);
-    auto configDir  = fs::absolute(_TRINITY_CORE_CONFIG_DIR);
+    auto configDir = fs::absolute(_TRINITY_CORE_CONFIG_DIR);
     std::string winServiceAction;
 
     auto vm = GetConsoleArguments(argc, argv, configFile, configDir, winServiceAction);
@@ -148,7 +149,7 @@ int main(int argc, char** argv)
 
     GOOGLE_PROTOBUF_VERIFY_VERSION;
 
-    auto protobufHandle = Trinity::make_unique_ptr_with_deleter<[](void*) { google::protobuf::ShutdownProtobufLibrary(); }>(&dummy);
+    auto protobufHandle = Trinity::make_unique_ptr_with_deleter < [](void*) { google::protobuf::ShutdownProtobufLibrary(); } > (&dummy);
 
 #ifdef _WIN32
     Trinity::Service::Init(serviceLongName, serviceName, serviceDescription, &main, &m_ServiceStatus);
@@ -162,19 +163,19 @@ int main(int argc, char** argv)
     Optional<UINT> newTimerResolution;
     boost::system::error_code dllError;
     auto winmm = Trinity::make_unique_ptr_with_deleter(new boost::dll::shared_library("winmm.dll", dllError, boost::dll::load_mode::search_system_folders), [&](boost::dll::shared_library* lib)
-    {
-        try
         {
-            if (newTimerResolution)
-                lib->get<decltype(timeEndPeriod)>("timeEndPeriod")(*newTimerResolution);
-        }
-        catch (std::exception const&)
-        {
-            // ignore
-        }
+            try
+            {
+                if (newTimerResolution)
+                    lib->get<decltype(timeEndPeriod)>("timeEndPeriod")(*newTimerResolution);
+            }
+            catch (std::exception const&)
+            {
+                // ignore
+            }
 
-        delete lib;
-    });
+            delete lib;
+        });
 
     if (winmm->is_loaded())
     {
@@ -200,8 +201,8 @@ int main(int argc, char** argv)
 
     std::string configError;
     if (!sConfigMgr->LoadInitial(configFile.generic_string(),
-                                 std::vector<std::string>(argv, argv + argc),
-                                 configError))
+        std::vector<std::string>(argv, argv + argc),
+        configError))
     {
         printf("Error in config file: %s\n", configError.c_str());
         return 1;
@@ -247,7 +248,7 @@ int main(int argc, char** argv)
 
     OpenSSLCrypto::threadsSetup(boost::dll::program_location().remove_filename());
 
-    auto opensslHandle = Trinity::make_unique_ptr_with_deleter<[](void*) { OpenSSLCrypto::threadsCleanup(); }>(&dummy);
+    auto opensslHandle = Trinity::make_unique_ptr_with_deleter < [](void*) { OpenSSLCrypto::threadsCleanup(); } > (&dummy);
 
     // Seed the OpenSSL's PRNG here.
     // That way it won't auto-seed when calling BigNumber::SetRand and slow down the first world login
@@ -293,7 +294,7 @@ int main(int argc, char** argv)
     if (!StartDB())
         return 1;
 
-    auto dbHandle = Trinity::make_unique_ptr_with_deleter<[](void*) { StopDB(); }>(&dummy);
+    auto dbHandle = Trinity::make_unique_ptr_with_deleter < [](void*) { StopDB(); } > (&dummy);
 
     if (vm.count("update-databases-only"))
         return 0;
@@ -327,22 +328,22 @@ int main(int argc, char** argv)
     LoginDatabase.DirectPExecute("UPDATE realmlist SET flag = flag | {} WHERE id = '{}'", Trinity::Legacy::REALM_FLAG_OFFLINE, realmId);
 
     sMetric->Initialize(realm->Name, *ioContext, []()
-    {
-        TC_METRIC_VALUE("online_players", sWorld->GetPlayerCount());
-        TC_METRIC_VALUE("db_queue_login", uint64(LoginDatabase.QueueSize()));
-        TC_METRIC_VALUE("db_queue_character", uint64(CharacterDatabase.QueueSize()));
-        TC_METRIC_VALUE("db_queue_world", uint64(WorldDatabase.QueueSize()));
-    });
+        {
+            TC_METRIC_VALUE("online_players", sWorld->GetPlayerCount());
+            TC_METRIC_VALUE("db_queue_login", uint64(LoginDatabase.QueueSize()));
+            TC_METRIC_VALUE("db_queue_character", uint64(CharacterDatabase.QueueSize()));
+            TC_METRIC_VALUE("db_queue_world", uint64(WorldDatabase.QueueSize()));
+        });
 
     realm = nullptr;
 
     TC_METRIC_EVENT("events", "Worldserver started", "");
 
     auto sMetricHandle = Trinity::make_unique_ptr_with_deleter(sMetric, [](Metric* metric)
-    {
-        TC_METRIC_EVENT("events", "Worldserver shutdown", "");
-        metric->Unload();
-    });
+        {
+            TC_METRIC_EVENT("events", "Worldserver shutdown", "");
+            metric->Unload();
+        });
 
     auto scriptReloadMgrHandle = Trinity::make_unique_ptr_with_deleter<&ScriptReloadMgr::Unload>(sScriptReloadMgr);
 
@@ -402,15 +403,15 @@ int main(int argc, char** argv)
     }
 
     auto sWorldSocketMgrHandle = Trinity::make_unique_ptr_with_deleter(&sWorldSocketMgr, [realmId](WorldSocketMgr* mgr)
-    {
-        sWorld->KickAll();                                       // save and kick all players
-        sWorld->UpdateSessions(1);                             // real players unload required UpdateSessions call
+        {
+            sWorld->KickAll();                                       // save and kick all players
+            sWorld->UpdateSessions(1);                             // real players unload required UpdateSessions call
 
-        mgr->StopNetwork();
+            mgr->StopNetwork();
 
-        ///- Clean database before leaving
-        ClearOnlineAccounts(realmId);
-    });
+            ///- Clean database before leaving
+            ClearOnlineAccounts(realmId);
+        });
 
     // Set server online (allow connecting now)
     LoginDatabase.DirectPExecute("UPDATE realmlist SET flag = flag & ~{}, population = 0 WHERE id = '{}'", Trinity::Legacy::REALM_FLAG_OFFLINE, realmId);
@@ -620,9 +621,9 @@ void FreezeDetector::Handler(std::weak_ptr<FreezeDetector> freezeDetectorRef, bo
 
             freezeDetector->_timer.expires_after(1s);
             freezeDetector->_timer.async_wait([freezeDetectorRef = std::move(freezeDetectorRef)](boost::system::error_code const& error) mutable
-            {
-                Handler(std::move(freezeDetectorRef), error);
-            });
+                {
+                    Handler(std::move(freezeDetectorRef), error);
+                });
         }
     }
 }
@@ -640,10 +641,10 @@ std::unique_ptr<Trinity::Net::AsyncAcceptor> StartRaSocketAcceptor(Trinity::Asio
     }
 
     acceptor->AsyncAccept([](Trinity::Net::IoContextTcpSocket&& sock, uint32 /*threadIndex*/)
-    {
-        std::make_shared<RASession>(std::move(sock))->Start();
+        {
+            std::make_shared<RASession>(std::move(sock))->Start();
 
-    });
+        });
     return acceptor;
 }
 
@@ -702,9 +703,9 @@ variables_map GetConsoleArguments(int argc, char** argv, fs::path& configFile, f
         ("help,h", "print usage message")
         ("version,v", "print version build info")
         ("config,c", value<fs::path>(&configFile)->default_value(fs::absolute(_TRINITY_CORE_CONFIG)),
-                     "use <arg> as configuration file")
+            "use <arg> as configuration file")
         ("config-dir,cd", value<fs::path>(&configDir)->default_value(fs::absolute(_TRINITY_CORE_CONFIG_DIR)),
-                     "use <arg> as directory with additional config files")
+            "use <arg> as directory with additional config files")
         ("update-databases-only,u", "updates databases only")
         ;
 #ifdef _WIN32
