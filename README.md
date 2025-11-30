@@ -1,9 +1,8 @@
-# ![logo](https://community.trinitycore.org/public/style_images/1_trinitycore.png) TrinityCore (master)
+# ![logo](https://community.trinitycore.org/public/style_images/1_trinitycore.png) WarSpire (master)
 
 [![Average time to resolve an issue](https://isitmaintained.com/badge/resolution/TrinityCore/TrinityCore.svg)](https://isitmaintained.com/project/TrinityCore/TrinityCore "Average time to resolve an issue") [![Percentage of issues still open](https://isitmaintained.com/badge/open/TrinityCore/TrinityCore.svg)](https://isitmaintained.com/project/TrinityCore/TrinityCore "Percentage of issues still open")
 
 --------------
-
 
 * [Build Status](#build-status)
 * [Introduction](#introduction)
@@ -12,10 +11,8 @@
 * [Reporting issues](#reporting-issues)
 * [Submitting fixes](#submitting-fixes)
 * [Copyright](#copyright)
-* [Authors &amp; Contributors](#authors--contributors)
+* [Authors & Contributors](#authors--contributors)
 * [Links](#links)
-
-
 
 ## Build Status
 
@@ -29,52 +26,35 @@ master | 3.3.5 | cata_classic
 
 ## Introduction
 
-TrinityCore is a *MMORPG* Framework based mostly in C++.
+WarSpire is a *MMORPG* server project based on the **TrinityCore framework**, primarily written in C++.
 
-It is derived from *MaNGOS*, the *Massive Network Game Object Server*, and is
-based on the code of that project with extensive changes over time to optimize,
-improve and cleanup the codebase at the same time as improving the in-game
-mechanics and functionality.
+It is derived from *MaNGOS* and TrinityCore, with extensive customizations to enhance gameplay, optimize performance, and improve server functionality.
 
-It is completely open source; community involvement is highly encouraged.
+WarSpire is completely open source; community involvement is highly encouraged.
 
-If you wish to contribute ideas or code, please visit our site linked below or
-make pull requests to our [Github repository](https://github.com/TrinityCore/TrinityCore/pulls).
+If you wish to contribute ideas or code, please visit our [Github repository](https://github.com/Deadlineem/WarSpire) to make pull requests.
 
-For further information on the TrinityCore project, please visit our project
-website at [TrinityCore.org](https://www.trinitycore.org).
+For further information on TrinityCore, please visit the original project website at [TrinityCore.org](https://www.trinitycore.org).
 
 ## Requirements
 
-
-Software requirements are available in the [wiki](https://trinitycore.info/en/install/requirements) for
-Windows, Linux and macOS.
-
+Software requirements are the same as TrinityCore and can be found in the [TrinityCore wiki](https://trinitycore.info/en/install/requirements) for Windows, Linux, and macOS.
 
 ## Install
 
-Detailed installation guides are available in the [wiki](https://trinitycore.info/en/home) for
-Windows, Linux and macOS.
-
+Installation guides for WarSpire follow the TrinityCore setup closely. See the [TrinityCore wiki](https://trinitycore.info/en/home) for step-by-step instructions.
 
 ## Reporting issues
 
-Issues can be reported via the [Github issue tracker](https://github.com/TrinityCore/TrinityCore/labels/Branch-master).
+Issues specific to WarSpire can be reported via the [Github issue tracker](https://github.com/Deadlineem/WarSpire/issues).
 
-Please take the time to review existing issues before submitting your own to
-prevent duplicates.
-
-In addition, thoroughly read through the [issue tracker guide](https://community.trinitycore.org/topic/37-the-trinitycore-issuetracker-and-you/) to ensure
-your report contains the required information. Incorrect or poorly formed
-reports are wasteful and are subject to deletion.
-
+Please check existing issues before submitting to avoid duplicates.
 
 ## Submitting fixes
 
-C++ fixes are submitted as pull requests via Github. For more information on how to
-properly submit a pull request, read the [how-to: maintain a remote fork](https://community.trinitycore.org/topic/9002-howto-maintain-a-remote-fork-for-pull-requests-tortoisegit/).
-For SQL only fixes, open a ticket; if a bug report exists for the bug, post on an existing ticket.
+C++ fixes should be submitted as pull requests via Github. SQL-only fixes should be posted as issues on the tracker.
 
+For more guidance, see TrinityCore's instructions for submitting pull requests: [how-to: maintain a remote fork](https://community.trinitycore.org/topic/9002-howto-maintain-a-remote-fork-for-pull-requests-tortoisegit/).
 
 ## Copyright
 
@@ -82,11 +62,9 @@ License: GPL 2.0
 
 Read file [COPYING](COPYING).
 
+## Authors & Contributors
 
-## Authors &amp; Contributors
-
-Read file [AUTHORS](AUTHORS).
-
+See TrinityCore [AUTHORS](AUTHORS) file. Additional WarSpire contributors are listed in the repository.
 
 ## Links
 
@@ -94,3 +72,4 @@ Read file [AUTHORS](AUTHORS).
 * [Wiki](https://www.trinitycore.info)
 * [Forums](https://talk.trinitycore.org/)
 * [Discord](https://discord.trinitycore.org/)
+* [WarSpire GitHub](https://github.com/Deadlineem/WarSpire)
